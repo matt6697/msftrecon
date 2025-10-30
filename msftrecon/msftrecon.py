@@ -102,6 +102,19 @@ class AzureRecon:
         except Exception:
             return False
 
+    def check_exchange_online_protection_dns_records(self) -> List[str]:
+        """Test if Exchange Online MX records exist for the domain"""
+        try:
+            exchange_online_prefix = self.domain.replace(".","-")
+            exchange_online_mail_protection_domain = exchange_online_prefix + ".mail.protection.outlook.com"
+            a_records = dns.resolver.resolve(exchange_online_mail_protection_domain, 'A')
+            if len([str(x).rstrip('.') for x in a_records]) > 0:
+                return True
+            else:
+                return False
+        except Exception:
+            return False
+
     def get_mx_records(self) -> List[str]:
         """Get MX records for the domain"""
         try:
@@ -701,6 +714,7 @@ class AzureRecon:
             "aad_applications": self.check_aad_applications(),
             "m365_services": {
                 "sharepoint": self.check_sharepoint(),
+                "exchange_online_dns_records": self.check_exchange_online_protection_dns_records(),
                 "mx_records": self.get_mx_records(),
                 "txt_records": self.get_txt_records(),
                 "autodiscover": self.get_autodiscover_endpoint()
@@ -725,7 +739,10 @@ class AzureRecon:
             any("protection.outlook.com" in txt for txt in results["m365_services"]["txt_records"]),
             results["m365_services"]["sharepoint"]
         ])
+        may_use_m365 = not uses_m365 and results["m365_services"]["exchange_online_dns_records"]
+
         results["uses_microsoft_365"] = uses_m365
+        results["may_use_microsoft_365"] = may_use_m365
 
         # Get tenant ID first as we need it for other checks
         tenant_id = None
@@ -823,7 +840,7 @@ def print_recon_results(results: Dict, json_output: bool = False) -> None:
     if results["m365_services"]["autodiscover"]:
         print(f"\nAutodiscover Endpoint: {results['m365_services']['autodiscover']}")
 
-    print(f"\n[+] Microsoft 365 Usage: {'Confirmed' if results['uses_microsoft_365'] else 'Not Detected'}")
+    print(f"\n[+] Microsoft 365 Usage: { 'Confirmed' if results['uses_microsoft_365'] else 'To be confirmed' if results['may_use_microsoft_365'] else 'Not Detected'}")
 
     print("\n[+] Azure Services:")
     

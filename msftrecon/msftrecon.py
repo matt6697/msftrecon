@@ -45,11 +45,10 @@ class AzureRecon:
             self.sharepoint = "sharepoint.cn"
             self.office365 = "partner.outlook.cn"
 
-
     def get_federation_info(self) -> Optional[Dict]:
         """Get Federation information for the domain"""
         try:
-            url = f"https://{self.ms_login}/getuserrealm.srf?login=user@{self.domain}&json=1"
+            url = f"https://{self.ms_login}/common/userrealm/user@{self.domain}?api-version=2.0"
             request = Request(url, headers={"User-agent": "Mozilla/5.0"})
             with urlopen(request) as response:
                 data = json.loads(response.read().decode())
@@ -688,14 +687,14 @@ class AzureRecon:
     def run_all_checks(self) -> Dict:
         """Run all reconnaissance checks"""
         # Get federation info
-        fed_info = self.get_federation_info()
+        fed_info = self.get_federation_info_v2()
         self.get_domains(self.domain)
         self.tenant_id = self.get_tenant_id()
         results = {
             "federation_info": {
                 "name_space_type": fed_info.get("NameSpaceType") if fed_info else None,
                 "federation_brand_name": fed_info.get("FederationBrandName") if fed_info else None,
-                "cloud_instance": fed_info.get("CloudInstanceName") if fed_info else None
+                "cloud_instance": fed_info.get("cloud_instance_name") if fed_info else None
             },
             "azure_ad_config": self.get_azure_ad_config(),
             "aad_connect": self.check_aad_connect_status(),
@@ -736,11 +735,13 @@ class AzureRecon:
         if tenant_id:
             # Additional Azure/M365 checks that require tenant ID
             results["tenant_config"] = {
-                "branding": self.check_tenant_branding(tenant_id),
+                "branding": fed_info.get("TenantBrandingInfo")[0] if fed_info else None,
                 "provisioning": self.check_provisioning_endpoints(tenant_id),
                 "conditional_access": self.check_conditional_access(tenant_id),
                 "legacy_auth": self.check_legacy_auth(tenant_id),
-                "azure_services": self.check_azure_services(tenant_id)
+                "azure_services": self.check_azure_services(tenant_id),
+                "desktop_seamless_sso": fed_info.get("is_dsso_enabled") if fed_info else None,
+                "keep_me_signed_in": not bool(fed_info.get("TenantBrandingInfo")[0].get("KeepMeSignedInDisabled")) if fed_info else None
             }
 
         return results

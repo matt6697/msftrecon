@@ -738,13 +738,13 @@ class AzureRecon:
         # if tenant_id:
             # Additional Azure/M365 checks that require tenant ID
             results["tenant_config"] = {
-                "branding": fed_info.get("TenantBrandingInfo")[0] if fed_info else None,
+                "branding": fed_info.get("TenantBrandingInfo")[0] if fed_info and len(fed_info.get("TenantBrandingInfo")) > 0 else None,
                 "provisioning": self.check_provisioning_endpoints(self.tenant_id),
                 "conditional_access": self.check_conditional_access(self.tenant_id),
                 "legacy_auth": self.check_legacy_auth(self.tenant_id),
                 "azure_services": self.check_azure_services(self.tenant_id),
                 "desktop_seamless_sso": fed_info.get("is_dsso_enabled") if fed_info else None,
-                "keep_me_signed_in": not bool(fed_info.get("TenantBrandingInfo")[0].get("KeepMeSignedInDisabled")) if fed_info else None
+                "keep_me_signed_in": not bool(fed_info.get("TenantBrandingInfo")[0].get("KeepMeSignedInDisabled")) if fed_info and len(fed_info.get("TenantBrandingInfo")) > 0 else None
             }
         else:
             results = {}

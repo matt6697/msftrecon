@@ -687,7 +687,7 @@ class AzureRecon:
     def run_all_checks(self) -> Dict:
         """Run all reconnaissance checks"""
         # Get federation info
-        fed_info = self.get_federation_info_v2()
+        fed_info = self.get_federation_info()
         self.get_domains(self.domain)
         self.tenant_id = self.get_tenant_id()
         results = {

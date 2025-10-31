@@ -686,63 +686,68 @@ class AzureRecon:
 
     def run_all_checks(self) -> Dict:
         """Run all reconnaissance checks"""
-        # Get federation info
-        fed_info = self.get_federation_info()
-        self.get_domains(self.domain)
         self.tenant_id = self.get_tenant_id()
-        results = {
-            "federation_info": {
-                "name_space_type": fed_info.get("NameSpaceType") if fed_info else None,
-                "federation_brand_name": fed_info.get("FederationBrandName") if fed_info else None,
-                "cloud_instance": fed_info.get("cloud_instance_name") if fed_info else None
-            },
-            "azure_ad_config": self.get_azure_ad_config(),
-            "aad_connect": self.check_aad_connect_status(),
-            "aad_applications": self.check_aad_applications(),
-            "m365_services": {
-                "sharepoint": self.check_sharepoint(),
-                "mx_records": self.get_mx_records(),
-                "txt_records": self.get_txt_records(),
-                "autodiscover": self.get_autodiscover_endpoint()
-            },
-            "azure_services": {
-                "app_services": self.check_app_services(),
-                "storage_accounts": self.check_storage_accounts(),
-                "power_apps": self.check_power_apps(),
-                "cdn_endpoints": self.check_azure_cdn(),
-                "b2c_configuration": self.check_b2c_configuration(self.domain)
-            },
-            "communication_services": self.check_teams_presence(),
-            "mdi_instance": self.check_mdi_instance(),
-            "domains": self.domains, 
-            "tenant": self.tenant_name, 
-            "tenant_id": self.tenant_id
-        }
 
-        # Determine if using Microsoft 365
-        uses_m365 = any([
-            any("outlook.com" in mx for mx in results["m365_services"]["mx_records"]),
-            any("protection.outlook.com" in txt for txt in results["m365_services"]["txt_records"]),
-            results["m365_services"]["sharepoint"]
-        ])
-        results["uses_microsoft_365"] = uses_m365
+        if self.tenant_id:
+            # Get federation info
+            fed_info = self.get_federation_info()
+            self.get_domains(self.domain)
+            
+            results = {
+                "federation_info": {
+                    "name_space_type": fed_info.get("NameSpaceType") if fed_info else None,
+                    "federation_brand_name": fed_info.get("FederationBrandName") if fed_info else None,
+                    "cloud_instance": fed_info.get("cloud_instance_name") if fed_info else None
+                },
+                "azure_ad_config": self.get_azure_ad_config(),
+                "aad_connect": self.check_aad_connect_status(),
+                "aad_applications": self.check_aad_applications(),
+                "m365_services": {
+                    "sharepoint": self.check_sharepoint(),
+                    "mx_records": self.get_mx_records(),
+                    "txt_records": self.get_txt_records(),
+                    "autodiscover": self.get_autodiscover_endpoint()
+                },
+                "azure_services": {
+                    "app_services": self.check_app_services(),
+                    "storage_accounts": self.check_storage_accounts(),
+                    "power_apps": self.check_power_apps(),
+                    "cdn_endpoints": self.check_azure_cdn(),
+                    "b2c_configuration": self.check_b2c_configuration(self.domain)
+                },
+                "communication_services": self.check_teams_presence(),
+                "mdi_instance": self.check_mdi_instance(),
+                "domains": self.domains, 
+                "tenant": self.tenant_name, 
+                "tenant_id": self.tenant_id
+            }
 
-        # Get tenant ID first as we need it for other checks
-        tenant_id = None
-        if "tenant_id" in results:
-            tenant_id = results["tenant_id"]
+            # Determine if using Microsoft 365
+            uses_m365 = any([
+                any("outlook.com" in mx for mx in results["m365_services"]["mx_records"]),
+                any("protection.outlook.com" in txt for txt in results["m365_services"]["txt_records"]),
+                results["m365_services"]["sharepoint"]
+            ])
+            results["uses_microsoft_365"] = uses_m365
+
+        # # Get tenant ID first as we need it for other checks
+        # tenant_id = None
+        # if "tenant_id" in results:
+        #     tenant_id = results["tenant_id"]
         
-        if tenant_id:
+        # if tenant_id:
             # Additional Azure/M365 checks that require tenant ID
             results["tenant_config"] = {
                 "branding": fed_info.get("TenantBrandingInfo")[0] if fed_info else None,
-                "provisioning": self.check_provisioning_endpoints(tenant_id),
-                "conditional_access": self.check_conditional_access(tenant_id),
-                "legacy_auth": self.check_legacy_auth(tenant_id),
-                "azure_services": self.check_azure_services(tenant_id),
+                "provisioning": self.check_provisioning_endpoints(self.tenant_id),
+                "conditional_access": self.check_conditional_access(self.tenant_id),
+                "legacy_auth": self.check_legacy_auth(self.tenant_id),
+                "azure_services": self.check_azure_services(self.tenant_id),
                 "desktop_seamless_sso": fed_info.get("is_dsso_enabled") if fed_info else None,
                 "keep_me_signed_in": not bool(fed_info.get("TenantBrandingInfo")[0].get("KeepMeSignedInDisabled")) if fed_info else None
             }
+        else:
+            results = {}
 
         return results
 
